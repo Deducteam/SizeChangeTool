@@ -7,10 +7,18 @@ all: bin
 #### Compilation #############################################################
 
 .PHONY: bin
-bin: parse.native
+bin: sizechange.native
 
-parse.native: _build/src/parse.native
+sizechange.native: _build/src/sizechange.native
 
-_build/src/parse.native: $(wildcard src/*.ml)
-	@echo "[OPT] parse.native"
-	@$(OCAMLBUILD) $(CFLAGS) src/parse.native
+_build/src/sizechange.native: $(wildcard src/*.ml)
+	@echo "[OPT] sizechange.native"
+	@$(OCAMLBUILD) $(CFLAGS) src/sizechange.native
+
+clean:
+	@ocamlbuild -quiet -clean
+
+distclean: clean
+	@find -name "*~" -exec rm {} \;
+	@rm -f kernel/version.ml
+	@rm -f META
