@@ -22,3 +22,4 @@ distclean: clean
 	@find -name "*~" -exec rm {} \;
 	@rm -f kernel/version.ml
 	@rm -f META
+
