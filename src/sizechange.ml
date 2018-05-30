@@ -38,6 +38,10 @@ let rec get_vars = function
   | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" ->
     SString.singleton(normalise x)
   | Xml.Element(s,l,ll) when s="var" -> failwith "So many argument in var !"
+  | Xml.Element(s,l,(Xml.Element(v,[],(Xml.PCData y)::[])::b::ll))
+    when s="lambda" && v="var"-> 
+    SString.remove (normalise y)
+      (List.fold_left SString.union SString.empty  (List.map get_vars ll))
   | Xml.Element(s,l,ll) ->
     List.fold_left SString.union SString.empty  (List.map get_vars ll)
   | Xml.PCData(s) -> SString.empty
