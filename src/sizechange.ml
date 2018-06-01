@@ -22,7 +22,8 @@ let escaped_char=['/',"_slash_" ; '+',"_plus_" ; '*',"_times_" ;
 let normalise s=
   List.fold_left (fun x (c,esc) -> replace c esc x) s escaped_char
 
-let pp_couple sep pp1 pp2 fmt x = Format.fprintf fmt "%a%s%a" pp1 (fst x) sep pp2 (snd x)
+let pp_couple sep pp1 pp2 fmt x =
+  Format.fprintf fmt "%a%s%a" pp1 (fst x) sep pp2 (snd x)
 
 let format_of_sep str fmt () : unit = Format.fprintf fmt "%s" str
 
@@ -31,7 +32,13 @@ let pp_list sep pp fmt l = Format.pp_print_list ~pp_sep:(format_of_sep sep) pp f
 let pp_sstring sep pp fmt s = pp_list sep pp fmt (SString.elements s)
 
 let rec pp_xml fmt = function
-  | Xml.Element(s,l,ll) -> Format.fprintf fmt "Element %s,[%a] , [%a] @." s (pp_list ";" (pp_couple "," Format.pp_print_string Format.pp_print_string)) l (pp_list ";" pp_xml) ll
+  | Xml.Element(s,l,ll) ->
+    Format.fprintf fmt "Element %s,[%a] , [%a] @."
+      s
+      (pp_list ";"
+         (pp_couple "," Format.pp_print_string Format.pp_print_string)
+      ) l
+      (pp_list ";" pp_xml) ll
   | Xml.PCData(s) -> Format.fprintf fmt "PCData %s" s
 
 let rec get_vars = function
@@ -99,49 +106,72 @@ let rec get_funcs =
     List.flatten (List.map get_funcs ll)
   | Xml.PCData(s) -> []
 
+let var_arity = ref []
+
+let rec eta_expand k t=
+  if k=0
+  then t
+    else eta_expand (k-1) "(new_var_"^(string_of_int k)^" => "^t^")"
+
 let get_term = 
-  let rec get_term_aux rhs = function
+  let rec get_term_aux under_app rhs = function
     | Xml.Element(s,l,ll) when s="funapp" ->
       begin
         let res=ref "" in
         List.iter
           (fun x ->
              let sep = (if !res="" then "" else " ") in
-             res:=!res^sep^(parenthesis (get_term_aux rhs x))
+             res:=!res^sep^(parenthesis (get_term_aux 0 rhs x))
           ) ll;
         !res
       end
     | Xml.Element(s,[],(Xml.PCData x)::tl) when s="name" -> normalise x
     | Xml.Element(s,l,ll) when s="name" ->
       failwith "So many argument in name !"
-    | Xml.Element(s,[],a::[]) when s="arg" -> get_term_aux rhs a
+    | Xml.Element(s,[],a::[]) when s="arg" -> get_term_aux 0 rhs a
     | Xml.Element(s,l,ll) when s="arg" ->
       failwith "So many argument in arg !"
     | Xml.Element(s,[],a::b::[]) when s="application" ->
-      (get_term_aux rhs a)^" "^(parenthesis (get_term_aux rhs b))
+      let t1=get_term_aux (under_app +1) rhs a in
+      let t2=parenthesis (get_term_aux 0 rhs b) in
+      t1^" "^t2
     | Xml.Element(s,l,ll) when s="application" ->
       failwith "So many argument in application !"
-    | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" -> normalise x
+    | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" ->
+      begin
+        Format.printf "%s dans [%a]@." x (pp_list "," (pp_couple ";" Format.pp_print_string Format.pp_print_int)) !var_arity;
+        (if rhs
+         then
+           fun t->
+             try
+               eta_expand ((List.assoc x !var_arity)-under_app) (normalise t)
+             with Not_found -> normalise t
+         else
+           fun t -> (var_arity:=(t,under_app)::!var_arity; (normalise t))
+        ) x
+      end
     | Xml.Element(s,l,ll) when s="var" ->
       failwith "So many argument in var !"
     | Xml.Element(s,[],a::b::c::[]) when s="lambda" ->
-      "(" ^ (get_term_aux rhs a) ^
+      "(" ^ (get_term_aux 0 rhs a) ^
       (if rhs then " : " ^ (get_local_type b) ^ " " else "") ^
-      " => " ^ (get_term_aux rhs c) ^ ")"
+      " => " ^ (get_term_aux 0 rhs c) ^ ")"
     | Xml.Element(s,l,ll) when s="lambda" ->
       failwith "So many argument in lambda !"
     | x -> failwith
              ("This file is totally unexpected !!@."^(Xml.to_string x)^"@.")
   in
   function
-  | Xml.Element(s,l,a::[]) when s="rhs" -> get_term_aux true a
-  | Xml.Element(s,l,a::[]) when s="lhs" -> get_term_aux false a
+  | Xml.Element(s,l,a::[]) when s="rhs" -> get_term_aux 0 true a
+  | Xml.Element(s,l,a::[]) when s="lhs" -> var_arity:=[]; get_term_aux 0 false a
   | x -> failwith
            ("This file is totally unexpected !!@."^(Xml.to_string x)^"@.")
 
 let rec get_rules = function
   | Xml.Element(s,[],a::b::[]) when s="rule" ->
-      [(get_vars a, get_term a, get_term b)]
+    let t1= get_term a in
+    let t2= get_term b in
+    [(get_vars a, t1, t2)]
   | Xml.Element(s,l,ll) when s="rule" ->
     failwith "So many arguments in rule !"
   | Xml.Element(s,l,ll) -> List.flatten (List.map get_rules ll)
