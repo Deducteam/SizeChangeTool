@@ -1,9 +1,11 @@
 #!/bin/sh
 
+d="${0%/*}"
 for arg in $*
 do
-    ~/SizeChangeTool/sizechange.native $arg
+    $d/sizechange.native $arg
     size=$((`expr length $arg`-4))
     fil=`expr substr $arg 1 $size`
-    dkcheck -nc -sz -nl -q $fil.dk 2>&1 | xargs ~/SizeChangeTool/analyse.sh
+    $d/Dedukti/dkcheck.native -nc -sz -nl -q $fil.dk 2>&1 | xargs $d/analyse.sh
+    rm $fil.dk
 done
