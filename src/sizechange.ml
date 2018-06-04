@@ -109,9 +109,11 @@ let rec get_funcs =
 let var_arity = ref []
 
 let rec eta_expand k t=
-  if k=0
+  if k<=0
   then t
-    else eta_expand (k-1) "(new_var_"^(string_of_int k)^" => "^t^")"
+  else
+    let v="new_var_"^(string_of_int k) in
+    eta_expand (k-1) ("("^v^" => "^t^" "^v^")")
 
 let get_term = 
   let rec get_term_aux under_app rhs = function
@@ -139,12 +141,11 @@ let get_term =
       failwith "So many argument in application !"
     | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" ->
       begin
-        Format.printf "%s dans [%a]@." x (pp_list "," (pp_couple ";" Format.pp_print_string Format.pp_print_int)) !var_arity;
         (if rhs
          then
            fun t->
              try
-               eta_expand ((List.assoc x !var_arity)-under_app) (normalise t)
+               eta_expand ((List.assoc t !var_arity)-under_app) (normalise t)
              with Not_found -> normalise t
          else
            fun t -> (var_arity:=(t,under_app)::!var_arity; (normalise t))
@@ -152,8 +153,9 @@ let get_term =
       end
     | Xml.Element(s,l,ll) when s="var" ->
       failwith "So many argument in var !"
-    | Xml.Element(s,[],a::b::c::[]) when s="lambda" ->
-      "(" ^ (get_term_aux 0 rhs a) ^
+    | Xml.Element(s1,[],(Xml.Element(s2,[],(Xml.PCData x)::[]))::b::c::[])
+         when s1="lambda" && s2="var" ->
+      "(" ^ (normalise x) ^
       (if rhs then " : " ^ (get_local_type b) ^ " " else "") ^
       " => " ^ (get_term_aux 0 rhs c) ^ ")"
     | Xml.Element(s,l,ll) when s="lambda" ->
