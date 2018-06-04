@@ -2,33 +2,32 @@ OCAMLBUILD = ocamlbuild -use-ocamlfind
 CFLAGS = -package xml-light
 
 .PHONY: all
-all: bin dedukti
+all: binary dedukti
 
 #### Compilation #############################################################
 
-.PHONY: bin
-bin: sizechange.native
+.PHONY: binary
+binary: bin/sizechange.native
 
-sizechange.native: _build/src/sizechange.native
+bin/sizechange.native: _build/src/sizechange.native
 
-_build/src/sizechange.native: $(wildcard src/*.ml)
+_build/src/sizechange.native: $(wildcard bin/src/*.ml)
 	@echo "[OPT] sizechange.native"
-	@$(OCAMLBUILD) $(CFLAGS) src/sizechange.native
+	@$(OCAMLBUILD) $(CFLAGS) bin/src/sizechange.native
 
 .PHONY: clean
 clean:
 	@ocamlbuild -quiet -clean
-	@cd Dedukti && make clean
+	@cd bin/Dedukti && make clean
 
 .PHONY: distclean
 distclean: clean
 	@find -name "*~" -exec rm {} \;
-	@rm -f kernel/version.ml
 	@rm -f META
-	@cd Dedukti && make distclean
+	@cd bin/Dedukti && make distclean
 
 .PHONY: dedukti
 dedukti:
 	@echo "[OPT] Dedukti"
-	@cd Dedukti && make
+	@cd bin/Dedukti && make
 
