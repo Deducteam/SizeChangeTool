@@ -9,9 +9,11 @@ all: binary dedukti
 .PHONY: binary
 binary: bin/sizechange.native
 
-bin/sizechange.native: _build/src/sizechange.native
+bin/sizechange.native: _build/bin/src/sizechange.native
+	@cp _build/bin/src/sizechange.native bin/
+	@rm sizechange.native
 
-_build/src/sizechange.native: $(wildcard bin/src/*.ml)
+_build/bin/src/sizechange.native: $(wildcard bin/src/*.ml)
 	@echo "[OPT] sizechange.native"
 	@$(OCAMLBUILD) $(CFLAGS) bin/src/sizechange.native
 
