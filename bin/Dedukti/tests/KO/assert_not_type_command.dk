@@ -1,6 +1,0 @@
-#NAME assert_not_type_command.
-
-A : Type.
-a : A.
-
-#ASSERTNOT a :: A.

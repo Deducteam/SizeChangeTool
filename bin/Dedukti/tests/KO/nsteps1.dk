@@ -1,5 +1,0 @@
-#NAME nsteps1.
-
-def A : Type.
-
-#SNF[-1] A.
