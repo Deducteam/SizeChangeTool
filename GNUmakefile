@@ -7,15 +7,15 @@ all: binary dedukti
 #### Compilation #############################################################
 
 .PHONY: binary
-binary: bin/sizechange.native
+binary: bin/tpdb_to_dk.native
 
-bin/sizechange.native: _build/bin/src/sizechange.native
-	@cp _build/bin/src/sizechange.native bin/
-	@rm sizechange.native
+bin/tpdb_to_dk.native: _build/bin/src/tpdb_to_dk.native
+	@cp _build/bin/src/tpdb_to_dk.native bin/
+	@rm tpdb_to_dk.native
 
-_build/bin/src/sizechange.native: $(wildcard bin/src/*.ml)
-	@echo "[OPT] sizechange.native"
-	@$(OCAMLBUILD) $(CFLAGS) bin/src/sizechange.native
+_build/bin/src/tpdb_to_dk.native: $(wildcard bin/src/*.ml)
+	@echo "[OPT] tpdb_to_dk.native"
+	@$(OCAMLBUILD) $(CFLAGS) bin/src/tpdb_to_dk.native
 
 .PHONY: clean
 clean:

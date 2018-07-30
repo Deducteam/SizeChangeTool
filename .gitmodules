@@ -1,4 +1,7 @@
 [submodule "Dedukti"]
-	path = Dedukti
+	path = bin/Dedukti
 	url = https://github.com/Deducteam/Dedukti.git
 	branch = sizechange
+[submodule "bin/Dedukti"]
+	path = bin/Dedukti
+	url = https://github.com/Deducteam/Dedukti.git
