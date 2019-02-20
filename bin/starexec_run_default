@@ -1,9 +1,0 @@
-#!/bin/sh
- 
-d="${0%/*}"
-cp $1 $2/bla.xml
-$d/sizechange.native $2/bla.xml
-fil=$2/bla
-$d/Dedukti/dkcheck.native -nc -sz -nl -q $fil.dk 2>&1 | xargs $d/analyse.sh
-rm $fil.xml
-rm $fil.dk
