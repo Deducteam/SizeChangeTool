@@ -70,8 +70,8 @@ let run file gr =
   let orange = colored 3 in
   if perform_checks gr
   then
-    (Format.eprintf "%s@." (green "YES");
-     Format.eprintf "%s was proved terminating@." file)
+    (Format.printf "%s@." (green "YES");
+     Format.printf "%s was proved terminating@." file)
   else
     begin
       Format.eprintf "%s@." (orange "MAYBE");

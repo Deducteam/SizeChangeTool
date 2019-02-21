@@ -6,7 +6,6 @@ open Callgraph
 open Call_extractor
 
 let str_of_name = string_of pp_name
-let mod_export = "sct_export"
 
 let term_iter : (int -> ident -> unit) -> (name -> unit) -> unit -> term -> unit =
   fun f_var f_cst f_typ ->
@@ -37,7 +36,7 @@ let pre_rule_of_rinfos : Rule.rule_infos -> Rules.pre_rule =
 let rule_info_of_pre_rule : Rules.pre_rule -> Rule.rule_infos =
   fun r -> Rule.(
     let rule_name_conversion rn =
-      Gamma (false,mk_name (mk_mident mod_export) (mk_ident rn)) in
+      Gamma (false,mk_name (mk_mident "") (mk_ident rn)) in
     let rec pattern_of_term =
       function
       | DB(l,id,n)             -> Var(l,id,n,[])
@@ -54,10 +53,10 @@ let rule_info_of_pre_rule : Rules.pre_rule -> Rule.rule_infos =
     in
     let ur = {
         name = rule_name_conversion r.name
-    ; ctx = List.map (fun x -> dloc,x) (Array.to_list r.ctx)
-    ; pat = pattern_of_pre_rule r
-    ; rhs = r.rhs
-    }
+      ; ctx = List.map (fun x -> dloc,x) (Array.to_list r.ctx)
+      ; pat = pattern_of_pre_rule r
+      ; rhs = r.rhs
+      }
     in
     to_rule_infos ur)
 
@@ -84,7 +83,9 @@ let dk_sig_to_callgraph : Signature.t -> call_graph =
     | []    -> gr
     | a::tl -> enrich_rules (add_symb_rules gr a) tl
   in
-  enrich_rules (enrich_symb (new_graph ()) l) l
+  enrich_rules
+    (enrich_symb (new_graph (string_of_mident (Signature.get_name s))) l)
+    l
 
 let to_dk_signature : string -> entry list -> Signature.t =
   fun path entries ->
@@ -111,7 +112,7 @@ let to_dk_signature : string -> entry list -> Signature.t =
 
 let export_to_dk : call_graph -> Signature.t =
   fun gr ->
-  let res = Signature.make "sct_export" in
+  let res = Signature.make gr.mod_name in
   let si = gr.signature in
   IMap.iter
     (fun _ s ->

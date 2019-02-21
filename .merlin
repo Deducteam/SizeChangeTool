@@ -1,3 +1,5 @@
 S src/
-B _build/src
-PKG xml-light
+
+B _build/src/
+
+PKG dedukti xml-light

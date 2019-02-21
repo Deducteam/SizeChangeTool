@@ -57,13 +57,16 @@ type call_graph =
     signature : Sign.signature
   ; (** The adjacence matrix of the call graph *)
     calls     : CallGraphAdjMat.t
+  ; (** Module name *)
+    mod_name  : string
   }
 
-(** Create a new graph *)
-let new_graph : unit -> call_graph =
-  fun () ->
+(** [new_graph mod_name] creates a new graph of name [mod_name] *)
+let new_graph : string -> call_graph =
+  fun mod_name ->
     { signature = new_signature ()
     ; calls     = CallGraphAdjMat.new_mat 0
+    ; mod_name
     }
 
 type call =
@@ -133,7 +136,8 @@ let add_call : call_graph -> call -> call_graph =
 let add_symb : call_graph -> symbol -> call_graph =
   fun gr sy ->
   { signature = add_symb gr.signature sy
-  ; calls     = CallGraphAdjMat.(add_line (add_column (gr.calls)))}
+  ; calls     = CallGraphAdjMat.(add_line (add_column (gr.calls)))
+  ; mod_name  = gr.mod_name }
 
 let definable : call_graph -> name -> Signature.staticity =
   fun gr s ->

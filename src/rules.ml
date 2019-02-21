@@ -1,3 +1,5 @@
+open Basic
+
 type pre_context   = Basic.ident array
 type typed_context = (Basic.ident * Term.term) array
 
@@ -7,7 +9,7 @@ type 'a rule =
   { (** An identifier of the rule *)
     name : rule_name
   ; (** Head of the lhs *)
-    head : Basic.name
+    head : name
   ; (** List of arguments of the lhs *)
     args : Term.term array
   ; (** Right-hand-side of the rule *)
@@ -15,6 +17,13 @@ type 'a rule =
   ; (** Context containing the variables in the lhs with their types *)
     ctx  : 'a
   }
+
+let pp_rule : 'a rule printer =
+  fun fmt r ->
+  Format.fprintf fmt "%a %a --> %a"
+    pp_name r.head
+    (pp_arr " " Term.pp_term) r.args
+    Term.pp_term r.rhs
 
 type pre_rule   = pre_context rule
 type typed_rule = typed_context rule

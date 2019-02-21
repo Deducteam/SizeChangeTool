@@ -45,7 +45,7 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   let partial_export_to_dk : Basic.name -> Signature.t =
     fun f ->
     let ind_f = find_symbol_index si f in
-    let res = Signature.make "sct_export" in
+    let res = Signature.make gr.mod_name in
     IMap.iter
       (fun _ s ->
         if sym_ord.tab.(find_symbol_index si s.name).(ind_f)
