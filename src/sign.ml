@@ -7,8 +7,10 @@ let _ = Debug.register_flag D_sign "Signature"
 type local_result =
   (** If a call from a symbol to itself lead to potentially non-terminating sequence *)
   | SelfLooping  of Rules.rule_name list
-  (** Variables at non-positive position under this constructor are accessed *)
+  (** Variables of higher-order at non-PFP position under this constructor are accessed *)
   | NotPFP  of Rules.rule_name
+  (** Variables at non-positive position under this constructor are accessed *)
+  | NotPositive  of Rules.rule_name
   (** The rhs of this rule is not typable without adding constraints inferred from the lhs *)
   | RhsUntypable of Rules.rule_name
   (** The lhs of this rule has too many arguments compared to the declared type of the head symbol. *)
@@ -21,6 +23,7 @@ let pp_local_result : local_result printer =
       match lr with
       | SelfLooping _    -> "self looping"
       | NotPFP _         -> "not PFP"
+      | NotPositive _    -> "not positive"
       | RhsUntypable _   -> "rhs is untypable"
       | LhsOverApplied _ -> "lhs over applied"
     in
