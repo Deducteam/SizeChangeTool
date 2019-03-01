@@ -100,9 +100,7 @@ let run file gr =
                    )
               )
               sy.result in
-      Sign.IMap.iter
-        (fun k x -> Format.eprintf "%i %a@." k pp_name x.Sign.name; lc_result x)
-        (gr.signature.symbols)
+      Sign.IMap.iter (fun _ x -> lc_result x) (gr.signature.symbols)
     end
 
 let run_on_file file =

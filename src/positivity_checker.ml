@@ -20,17 +20,18 @@ let extract_constraints_of_typ : int * term ->
       | _,App(Const(_,f),_,_) as t -> [t]
     | i,Pi(_,_,t1,t2)              ->
        (extract_negative (i,t1)) @ (extract_positive (i+1,t2))
-
-    | _                            ->
-       failwith "It is quite unexpected to have a type which is not a product of application of constants"
+    | _,Type _                     -> []
+    | _,t                          ->
+       failwith (Format.asprintf "It is quite unexpected to have a type which is not a product of application of constants: %a" pp_term t)
   and extract_negative : int * term -> (int * term) list =
     function
     | _,Const(_,f)
       | _,App(Const(_,f),_,_) -> []
     | i,Pi(_,_,t1,t2)         ->
        (extract_positive (i,t1)) @ (extract_negative (i+1,t2))
-    | _                       ->
-       failwith "It is quite unexpected to have a type which is not a product of application of constants"
+    | _,Type _                -> []
+    | _,t                     ->
+       failwith (Format.asprintf "It is quite unexpected to have a type which is not a product of application of constants: %a" pp_term t)
   in
   fun t_arg -> (extract_positive t_arg,extract_negative t_arg)
 
@@ -83,7 +84,7 @@ let accessed : Rules.pre_rule -> (Rules.rule_name * name * int) list =
          else
            bis glob_acc [] 0 used tl
       | App(Const(_,f),t2,l) :: tl ->
-         let index = ref 0 in
+         let index = ref (-1) in
          List.flatten
            (List.map
               (fun t ->
@@ -119,10 +120,11 @@ let get_ith_arg_and_return : Sign.signature -> (Rules.rule_name * name * int)
   in
   let rec get_ith : int -> int -> term -> int * term =
     fun i remain t ->
+    Format.printf "We want the %ith argument in %a@." remain pp_term t;
     match (remain,t) with
     | 0,Pi(_,_,t1,_) -> (i,t1)
-    | i,Pi(_,_,_,t2) -> get_ith i (remain-1) t2
-    | _              -> failwith "Over-applied symbol in the lhs"
+    | j,Pi(_,_,_,t2) -> get_ith i (j-1) t2
+    | x,tt           -> failwith (Format.asprintf "Over-applied symbol in the lhs: We want %i in %a" x pp_term tt)
   in
   fun si (r,f,i) ->
   let symbols = si.symbols in
@@ -192,7 +194,7 @@ let rec comp_list : (int * term) list -> (int * term) list -> bool =
      | Infi -> false
      | Zero -> comp_list l1 l2
      | Min1 -> true
-  
+
 let verify_pos_type_level_rules : Callgraph.call_graph -> constr_graph -> bool =
   fun gr cst_gr ->
   let si = gr.signature in
@@ -235,7 +237,7 @@ let verify_pos_type_level_rules : Callgraph.call_graph -> constr_graph -> bool =
     )
     si.rules;
   !res
-  
+
 let is_mkable_pos : (Rules.rule_name * name * (int * term) * (int * term)) ->
                              signature -> constr_graph -> bool =
   fun (r,c,(i1,ti),(i2,tr)) si cst_gr ->

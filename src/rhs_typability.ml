@@ -57,22 +57,30 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
       (fun _ r ->
         if sym_ord.tab.(find_symbol_index si r.Rules.head).(ind_f)
         then
+        try
           Signature.add_rules
-            res [rule_info_of_pre_rule r])
+            res [rule_info_of_pre_rule r]
+        with
+        | Signature.SignatureError e -> Errors.fail_env_error dloc (Env.EnvErrorSignature e)
+      )
       rules;
     res
   in
   let check_rule : Rules.pre_rule -> bool =
     fun r ->
+    Format.printf "On s'intéresse à %s@." r.name;
     let si_loc = partial_export_to_dk r.head in
+    Format.printf "On a fait l'export@.";
     let sub, tyr = type_rule r gr in
+    Format.printf "Et typé la règle@.";
     let symb = IMap.find (find_symbol_index si r.Rules.head) symbols in
     let expected_typ = Subst.Subst.apply sub 0 (remove_pis (Array.to_list r.args) symb.typ) in
     try
       let ctx = List.map (fun (a,b) -> (dloc,a,b)) (Array.to_list tyr.ctx) in
       Typing.check si_loc ctx r.rhs expected_typ;
       true
-    with _ -> false
+    with
+    | _ -> false
   in
   let res = ref true in
   IMap.iter

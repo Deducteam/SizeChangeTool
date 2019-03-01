@@ -141,7 +141,10 @@ let add_symb : call_graph -> symbol -> call_graph =
 
 let definable : call_graph -> name -> Signature.staticity =
   fun gr s ->
-    let k = find_symbol_index (gr.signature) s in
-    if Array.exists (fun l -> not (l = [])) (gr.calls).tab.(k)
-    then Signature.Definable
-    else Signature.Static
+  let res = ref false in
+  IMap.iter
+    (fun _ r -> res := !res || (r.Rules.head = s))
+    gr.signature.rules;
+  if !res
+  then Signature.Definable
+  else Signature.Static
