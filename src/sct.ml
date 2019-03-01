@@ -5,7 +5,7 @@ let perform_checks : Callgraph.call_graph -> bool =
   fun gr ->
   Sizechange.check_sct gr
   && Arity_checker.check_lh_arity gr.signature
-  && Pfp_checker.check_pfp gr
+  && Positivity_checker.check_positivity gr
   && Rhs_typability.check_rhs_underf_typab gr
 
 type extension = Xml | Dk
@@ -92,6 +92,7 @@ let run file gr =
                       Format.eprintf "  - %a@."
                         (pp_list "\n  - " Format.pp_print_string) l
                     | NotPFP s
+                      | NotPositive s
                       | RhsUntypable s
                       | LhsOverApplied s ->
                        Format.eprintf "  - %a@."

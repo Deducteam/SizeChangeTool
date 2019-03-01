@@ -161,20 +161,83 @@ let compute_main_order : (Rules.rule_name * name * (int * term) * (int * term)) 
         ) (lpos@lneg)
     ) acc
 
+let main_order_type_level_rules : Callgraph.call_graph -> constr_graph -> unit =
+  fun gr cst_gr ->
+  let si = gr.signature in
+  let rec study i =
+    function
+    | Pi(_,_,t1,t2) -> study i t1; study i t2
+    | Const(_,f)
+      | App(Const(_,f),_,_) -> cst_gr.typ_cstr_order.tab.(find_array f cst_gr.constructors).(i) <- true
+    | _ -> failwith "Unexpected types"
+  in
+  IMap.iter
+    (fun _ r ->
+      let tt = (IMap.find (find_symbol_index si r.Rules.head) si.symbols).typ in
+      if is_a_kind tt
+      then
+        study (find_array r.Rules.head cst_gr.constructors) r.Rules.rhs
+    )
+    si.rules
+
+
+let rec comp_list : (int * term) list -> (int * term) list -> bool =
+  fun l1 l2 ->
+  match l1,l2 with
+  | [], [] -> false
+  | [], _  -> true
+  | _, []  -> false
+  | (i1,a)::l1,(i2,b)::l2 ->
+     match Call_extractor.compare_term (i2-i1) a b with
+     | Infi -> false
+     | Zero -> comp_list l1 l2
+     | Min1 -> true
+  
+let verify_pos_type_level_rules : Callgraph.call_graph -> constr_graph -> bool =
+  fun gr cst_gr ->
+  let si = gr.signature in
+  let cons = cst_gr.constructors in
+  let main = cst_gr.typ_cstr_order.tab in
+  let res = ref true in
+  IMap.iter
+    (fun _ r ->
+      let symb = IMap.find (find_symbol_index si r.Rules.head) si.symbols in
+      let tt = symb.typ in
+      if is_a_kind tt
+      then
+        let i = find_array r.head cons in
+        let _,lneg = extract_constraints_of_typ (0,tt) in
+        List.iter
+          ( fun (j,t) ->
+            match t with
+            | Const(_,f) ->
+               let i_f = find_array f cons in
+               let comp = main.(i).(i_f) in
+               if comp then
+                 if Array.length r.args = 0 then
+                   (res := false;
+                    update_result symb (NotPositive r.name))
+            | App(Const(_,f),t1,l1) ->
+               let i_f = find_array f cons in
+               let comp = main.(i).(i_f) in
+               if comp then
+                 let res_bis =
+                   comp_list
+                     (List.map (fun x -> j,x) (t1::l1))
+                     (List.map (fun x -> 0,x) (Array.to_list r.args))
+                 in
+                 if not res_bis
+                 then
+                   (res := false;
+                    update_result symb (NotPositive r.name))
+            | _ -> failwith "Unexpected types"
+          ) lneg;
+    )
+    si.rules;
+  !res
+  
 let is_mkable_pos : (Rules.rule_name * name * (int * term) * (int * term)) ->
                              signature -> constr_graph -> bool =
-  let rec comp_list : (int * term) list -> (int * term) list -> bool =
-    fun l1 l2 ->
-    match l1,l2 with
-    | [], [] -> false
-    | [], _  -> true
-    | _, []  -> false
-    | (i1,a)::l1,(i2,b)::l2 ->
-       match Call_extractor.compare_term (i2-i1) a b with
-       | Infi -> false
-       | Zero -> comp_list l1 l2
-       | Min1 -> true
-  in
   fun (r,c,(i1,ti),(i2,tr)) si cst_gr ->
   let cons = cst_gr.constructors in
   let main = cst_gr.typ_cstr_order.tab in
@@ -195,10 +258,21 @@ let is_mkable_pos : (Rules.rule_name * name * (int * term) * (int * term)) ->
               (NotPositive r))
       | Const(_,f), App(Const(_,g),_,_)              -> ()
       | App(Const(_,f),t1,l1), App(Const(_,g),t2,l2) ->
-         res :=
-           comp_list
-             (List.map (fun x -> i,x) (t1::l1))
-             (List.map (fun x -> i2,x) (t2::l2))
+         let i_f = find_array f cons in
+         let i_g = find_array g cons in
+         let comp = main.(i_g).(i_f) in
+         if comp then
+           let res_bis =
+             comp_list
+               (List.map (fun x -> i,x) (t1::l1))
+               (List.map (fun x -> i2,x) (t2::l2))
+           in
+           if not res_bis
+           then
+             (res := false;
+              update_result
+                (IMap.find (find_symbol_index si c) si.symbols)
+                (NotPositive r))
       | _ -> failwith "Unexpected types"
     ) lneg;
   !res
@@ -214,7 +288,9 @@ let check_positivity : Callgraph.call_graph -> bool =
     si.rules;
   let acc = List.map (get_ith_arg_and_return si) (List.flatten !acc_name) in
   compute_main_order acc cst_gr;
+  main_order_type_level_rules gr cst_gr;
   let res = ref true in
+  res := verify_pos_type_level_rules gr cst_gr;
   List.iter
     (fun r ->
       res:= !res && (is_mkable_pos r si cst_gr)
