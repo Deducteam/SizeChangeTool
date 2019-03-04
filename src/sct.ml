@@ -1,5 +1,5 @@
 open Basic
-open Dk
+open Dk_export
 
 let perform_checks : Callgraph.call_graph -> bool =
   fun gr ->
@@ -34,7 +34,7 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
      let md = Filename.remove_extension (Filename.basename file) in
      let s =
        to_dk_signature file (Parser.Parse_channel.parse (mk_mident md) input)
-     in (close_in input; dk_sig_to_callgraph s)
+     in (close_in input; Dk_import.dk_sig_to_callgraph s)
   | Xml, false ->
      let md = mk_mident file in
      let dk_string = Tpdb_to_dk.load_file md file in
@@ -44,11 +44,11 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
         Format.fprintf output "%s@." dk_string);
      let s =
        to_dk_signature file (Parser.Parse_string.parse (mk_mident file) dk_string)
-     in Dk.dk_sig_to_callgraph s
+     in Dk_import.dk_sig_to_callgraph s
   | Dk,  true  ->
      let s =
        to_dk_signature file (Parser.Parse_channel.parse (mk_mident "std_in") stdin)
-     in dk_sig_to_callgraph s
+     in Dk_import.dk_sig_to_callgraph s
   | Xml, true ->
      let md = mk_mident file in
      let dk_string = Tpdb_to_dk.load_std md in
@@ -58,7 +58,7 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
         Format.fprintf output "%s@." dk_string);
      let s =
        to_dk_signature file (Parser.Parse_string.parse (mk_mident file) dk_string)
-     in Dk.dk_sig_to_callgraph s
+     in Dk_import.dk_sig_to_callgraph s
 
 let run file gr =
   let colored n s =
@@ -71,7 +71,7 @@ let run file gr =
   if perform_checks gr
   then
     (Format.printf "%s@." (green "YES");
-     Format.printf "%s was proved terminating@." file)
+     Debug.debug Debug.D_warn "%s was proved terminating@." file)
   else
     begin
       Format.eprintf "%s@." (orange "MAYBE");

@@ -43,7 +43,15 @@ let rec compare_term : int -> term -> term -> Cmp.t =
   (* Two distinct variables are uncomparable *)
   | DB (_,_,n), DB (_,_,m)
   (* A variable when applied has the same size as if it was not applied *)
-  | DB (_,_,n), App(DB(_,_,m),_,_) -> if n + i = m then Zero else Infi
+    | DB (_,_,n), App(DB(_,_,m),_,_)
+    | App(DB (_,_,n),_,_), DB (_,_,m)
+    | App(DB (_,_,n),_,_), App(DB(_,_,m),_,_) ->
+     if n + i = m then Zero else Infi
+  | Lam(_,_,_,DB(_,_,n)), DB(_,_,m)
+    | Lam(_,_,_,App(DB(_,_,n),_,_)), DB(_,_,m)
+    |  Lam(_,_,_,DB(_,_,n)), App(DB(_,_,m),_,_)
+    |  Lam(_,_,_,App(DB(_,_,n),_,_)), App(DB(_,_,m),_,_) ->
+     if n + i = m + 1 then Zero else Infi
   | App (Const(_,f),up,lp), App(Const(_,g),ut,lt) when f = g ->
      begin
        let res1 = comp_list Zero (up::lp) (ut::lt) in

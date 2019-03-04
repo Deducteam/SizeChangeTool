@@ -1,7 +1,7 @@
 open Basic
 open Term
 open Sizematrix
-open Dk
+open Dk_export
 open Sign
 
 type constr_graph =
@@ -120,7 +120,6 @@ let get_ith_arg_and_return : Sign.signature -> (Rules.rule_name * name * int)
   in
   let rec get_ith : int -> int -> term -> int * term =
     fun i remain t ->
-    Format.printf "We want the %ith argument in %a@." remain pp_term t;
     match (remain,t) with
     | 0,Pi(_,_,t1,_) -> (i,t1)
     | j,Pi(_,_,_,t2) -> get_ith i (j-1) t2

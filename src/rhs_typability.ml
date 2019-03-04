@@ -1,7 +1,8 @@
 open Basic
-open Dk
+open Dk_export
 open Sign
 
+(* [symbol_order si] contains a matrix such that [tab.(i).(j)=true} iff the [i]th symbol is smaller than the [j] *)
 let symbol_order : signature -> Sizematrix.Bool_matrix.t =
   fun si ->
   let symbols = si.symbols in
@@ -9,12 +10,12 @@ let symbol_order : signature -> Sizematrix.Bool_matrix.t =
   let res = Sizematrix.Bool_matrix.diago si.next_symb in
   (* First [f] is bigger that every [g] occurring in its type *)
   IMap.iter
-    (fun i x ->
+    (fun i f ->
       term_iter
         (fun _ _ -> ())
         (fun g-> res.tab.(find_symbol_index si g).(i) <- true)
         ()
-        x.typ
+        f.typ
     )
     symbols;
   (* Then [f] is bigger than [g] if [f] calls [g] *)
@@ -22,7 +23,7 @@ let symbol_order : signature -> Sizematrix.Bool_matrix.t =
     (fun i r ->
       term_iter
         (fun _ _ -> ())
-        (fun g -> res.tab.(find_symbol_index si g).(i) <- true)
+        (fun g -> res.tab.(find_symbol_index si g).(find_symbol_index si r.Rules.head) <- true)
         ()
         r.Rules.rhs
     )
@@ -68,11 +69,8 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   in
   let check_rule : Rules.pre_rule -> bool =
     fun r ->
-    Format.printf "On s'intéresse à %s@." r.name;
     let si_loc = partial_export_to_dk r.head in
-    Format.printf "On a fait l'export@.";
     let sub, tyr = type_rule r gr in
-    Format.printf "Et typé la règle@.";
     let symb = IMap.find (find_symbol_index si r.Rules.head) symbols in
     let expected_typ = Subst.Subst.apply sub 0 (remove_pis (Array.to_list r.args) symb.typ) in
     try
