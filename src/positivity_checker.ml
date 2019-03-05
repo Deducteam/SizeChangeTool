@@ -1,8 +1,9 @@
 open Basic
 open Term
 open Sizematrix
-open Dk_export
 open Sign
+
+type comp_cstr = Rules.rule_name * name * (int * term) * (int * term)
 
 type constr_graph =
   { (** An array containing every type constructor and its status*)
@@ -61,7 +62,7 @@ let accessed : Rules.pre_rule -> (Rules.rule_name * name * int) list =
       | Kind
         | Type _
         | Const _           -> acc
-      | DB(_,_,j)           -> if i<j then (j-i)::acc else acc
+      | DB(_,_,j)           -> if i<=j then (j-i)::acc else acc
       | App(t1,t2,l)        -> List.flatten (List.map (bis acc i) (t1::t2::l))
       | Lam(_,_,None,t)     -> bis acc (i+1) t
       | Lam(_,_,Some t1,t2)
@@ -109,9 +110,9 @@ let accessed : Rules.pre_rule -> (Rules.rule_name * name * int) list =
   let used_vars = List.sort_uniq compare (used_variables r.rhs) in
   list_of_access used_vars (Array.to_list r.args)
 
-(* Transform the contraint of accessibility into pait of types which must be compare. (Rules.rule_name and name are kept for error messages). *)
+(* [get_ith_arg_and_return] transforms the contraint of accessibility into pair of types which must be compare. (Rules.rule_name and name are kept for error messages). *)
 let get_ith_arg_and_return : Sign.signature -> (Rules.rule_name * name * int)
-                     -> (Rules.rule_name * name * (int * term) * (int * term)) =
+                             -> comp_cstr =
   let rec get_return : int -> term -> int * term =
     fun i ->
     function
@@ -131,6 +132,7 @@ let get_ith_arg_and_return : Sign.signature -> (Rules.rule_name * name * int)
   let tt = s.typ in
   r,f,get_ith i i tt,get_return 0 tt
 
+(** [find_array x arr] find the first index [i] such that [arr.(i)=x]. If no such index exists, raise [Not_found] *)
 let find_array : 'a -> 'a array -> int =
     let rec bis : int -> 'a -> 'a list -> int =
       fun i x ->
@@ -141,8 +143,8 @@ let find_array : 'a -> 'a array -> int =
     in
     fun x arr -> bis 0 x (Array.to_list arr)
 
-let compute_main_order : (Rules.rule_name * name * (int * term) * (int * term)) list
-                         -> constr_graph -> unit =
+(** [compute_main_order l gr] modifies [gr.typ_cstr_order.tab] to reflect the order *)
+let compute_main_order : comp_cstr list -> constr_graph -> unit =
   fun acc cst_gr ->
   let cons = cst_gr.constructors in
   List.iter
@@ -237,8 +239,7 @@ let verify_pos_type_level_rules : Callgraph.call_graph -> constr_graph -> bool =
     si.rules;
   !res
 
-let is_mkable_pos : (Rules.rule_name * name * (int * term) * (int * term)) ->
-                             signature -> constr_graph -> bool =
+let is_mkable_pos : comp_cstr -> signature -> constr_graph -> bool =
   fun (r,c,(i1,ti),(i2,tr)) si cst_gr ->
   let cons = cst_gr.constructors in
   let main = cst_gr.typ_cstr_order.tab in
@@ -279,7 +280,6 @@ let is_mkable_pos : (Rules.rule_name * name * (int * term) * (int * term)) ->
   !res
 
 let check_positivity : Callgraph.call_graph -> bool =
-(* TODO : Il manque les règles au niveau type. *)
   fun gr ->
   let si = gr.signature in
   let cst_gr = empty_cst_gr si.symbols in

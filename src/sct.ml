@@ -1,14 +1,35 @@
 open Basic
 open Dk_export
 
+exception Timeout
+
+let timeout : int ref = ref 0
+
+let run_with_timeout : int -> ('a -> unit) -> ('a -> unit) -> 'a -> unit =
+  fun timeout fail f x ->
+  let old_handler =
+    Sys.signal Sys.sigalrm
+      (Sys.Signal_handle (fun _ -> raise Timeout)) in
+  let finish () =
+    ignore (Unix.alarm 0);
+    ignore (Sys.signal Sys.sigalrm old_handler) in
+  try
+    ignore (Unix.alarm timeout);
+    ignore (f x);
+    finish ()
+  with
+  | Timeout -> finish (); fail x
+  | exn -> finish (); raise exn
+
 let perform_checks : Callgraph.call_graph -> bool =
   fun gr ->
-  Sizechange.check_sct gr
-  && Arity_checker.check_lh_arity gr.signature
-  && Positivity_checker.check_positivity gr
-  && Rhs_typability.check_rhs_underf_typab gr
+  let sct = Sizechange.check_sct gr in
+  let arity = Arity_checker.check_lh_arity gr.signature in
+  let pos = Positivity_checker.check_positivity gr in
+  let rhs_typ = Rhs_typability.check_rhs_underf_typab gr in
+  sct && arity && pos && rhs_typ
 
-type extension = Xml | Dk
+type extension = Xtc | Dk
 
 let str_to_ext : string -> extension =
   function
@@ -17,7 +38,10 @@ let str_to_ext : string -> extension =
     | ".Xml"
     | "Xml"
     | ".XML"
-    | "XML" -> Xml
+    | "XML"
+    | "xtc"
+    | "Xtc"
+    | "XTC" -> Xtc
   | ".dk"
     | "dk"
     | ".Dk"
@@ -31,11 +55,11 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
   match ext, is_stdin with
   | Dk,  false ->
      let input = open_in file in
-     let md = Filename.remove_extension (Filename.basename file) in
+     let md = mk_mident file in
      let s =
-       to_dk_signature file (Parser.Parse_channel.parse (mk_mident md) input)
+       to_dk_signature file (Parser.Parse_channel.parse md input)
      in (close_in input; Dk_import.dk_sig_to_callgraph s)
-  | Xml, false ->
+  | Xtc, false ->
      let md = mk_mident file in
      let dk_string = Tpdb_to_dk.load_file md file in
      if !(Tpdb_to_dk.export_dk_file)
@@ -43,13 +67,13 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
        (let output = Format.formatter_of_out_channel (open_out (file^".dk")) in
         Format.fprintf output "%s@." dk_string);
      let s =
-       to_dk_signature file (Parser.Parse_string.parse (mk_mident file) dk_string)
+       to_dk_signature file (Parser.Parse_string.parse md dk_string)
      in Dk_import.dk_sig_to_callgraph s
   | Dk,  true  ->
      let s =
        to_dk_signature file (Parser.Parse_channel.parse (mk_mident "std_in") stdin)
      in Dk_import.dk_sig_to_callgraph s
-  | Xml, true ->
+  | Xtc, true ->
      let md = mk_mident file in
      let dk_string = Tpdb_to_dk.load_std md in
      if !(Tpdb_to_dk.export_dk_file)
@@ -60,14 +84,16 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
        to_dk_signature file (Parser.Parse_string.parse (mk_mident file) dk_string)
      in Dk_import.dk_sig_to_callgraph s
 
+
+let colored n s =
+  if !Errors.color
+  then "\027[3" ^ string_of_int n ^ "m" ^ s ^ "\027[m"
+  else s
+
+let green  = colored 2
+let orange = colored 3
+
 let run file gr =
-  let colored n s =
-    if !Errors.color
-    then "\027[3" ^ string_of_int n ^ "m" ^ s ^ "\027[m"
-    else s
-  in
-  let green  = colored 2 in
-  let orange = colored 3 in
   if perform_checks gr
   then
     (Format.printf "%s@." (green "YES");
@@ -154,7 +180,10 @@ let _ =
       , " Disable colors in the output" ) ;
       ( "--stdin"
       , Arg.String (fun s -> run_on_stdin (str_to_ext s))
-      , " ext Parses standard input considering it is a .ext file")
+      , " ext Parses standard input considering it is a .ext file") ;
+      ( "--timeout"
+      , Arg.Set_int timeout
+      , "i Set the timeout to i seconds (no timeout by default)")
      ]
   in
   let usage = "Usage: " ^ Sys.argv.(0) ^ " [OPTION]... [FILE]...\n" in
@@ -164,4 +193,13 @@ let _ =
     Arg.parse options (fun f -> files := f :: !files) usage;
     List.rev !files
   in
-  List.iter run_on_file files
+  List.iter
+    (run_with_timeout
+       !timeout
+       (Format.eprintf
+          "%s@.SizeChangeTool has timed out on %s@."
+          (orange "MAYBE")
+       )
+       run_on_file
+    )
+    files

@@ -71,7 +71,7 @@ let to_dk_signature : string -> entry list -> Signature.t =
 
 let export_to_dk : call_graph -> Signature.t =
   fun gr ->
-  let res = Signature.make gr.mod_name in
+  let res = Signature.make (gr.mod_name^".dk") in
   let si = gr.signature in
   IMap.iter
     (fun _ s ->
