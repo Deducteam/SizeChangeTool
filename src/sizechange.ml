@@ -7,8 +7,8 @@ open Basic
 open Sizematrix
 open Callgraph
 
-type Debug.flag += D_sctsummary
-let _ = Debug.register_flag D_sctsummary "Summary of SCT"
+type Debug.flag += D_sct
+let _ = Debug.register_flag D_sct "SCT"
 
 (** the main function, checking if calls are well-founded *)
 let check_sct : call_graph -> bool =

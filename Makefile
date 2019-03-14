@@ -4,6 +4,7 @@ VERSION = devel
 # Compile with "make Q=" to display the commands that are run.
 Q = @
 
+# The -tag debug together with export OCAMLRUNPARAM=b allow backtraces when the program fail.
 PKG = -package dedukti -package xml-light -package str
 
 .PHONY: all

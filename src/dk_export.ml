@@ -19,10 +19,10 @@ let term_iter : (int -> ident -> unit) -> (name -> unit) -> unit -> term -> unit
     | Pi(_,_,a,b)        -> aux a; aux b
   in aux
 
-let rule_info_of_pre_rule : Rules.pre_rule -> Rule.rule_infos =
-  fun r -> Rule.(
+let rule_info_of_pre_rule : mident -> Rules.pre_rule -> Rule.rule_infos =
+  fun md r -> Rule.(
     let rule_name_conversion rn =
-      Gamma (false,mk_name (mk_mident "") (mk_ident rn)) in
+      Gamma (false,mk_name md (mk_ident rn)) in
     let rec pattern_of_term =
       function
       | DB(l,id,n)             -> Var(l,id,n,[])
@@ -81,7 +81,7 @@ let export_to_dk : call_graph -> Signature.t =
   IMap.iter
     (fun _ r ->
       Signature.add_rules
-        res [rule_info_of_pre_rule r])
+        res [rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r])
     si.rules;
   res
 
@@ -89,6 +89,6 @@ let type_rule : Rules.pre_rule -> Callgraph.call_graph ->
                 Subst.Subst.t * Rules.typed_rule =
   fun r gr ->
   let s = export_to_dk gr in
-  let ri = rule_info_of_pre_rule r in
+  let ri = rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r in
   let tyr = Typing.typed_rule_of_rule_infos s ri in
   fst tyr, {r with ctx = Array.of_list (List.map (fun (_,a,b) -> a,b) (snd tyr).ctx)}

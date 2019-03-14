@@ -1,6 +1,9 @@
 open Basic
 open Dk_export
 
+type Debug.flag += D_termin
+let _ = Debug.register_flag D_termin "Termin"; Debug.enable_flag D_termin
+
 exception Timeout
 
 let timeout : int ref = ref 0
@@ -100,32 +103,37 @@ let run file gr =
      Debug.debug Debug.D_warn "%s was proved terminating@." file)
   else
     begin
-      Format.eprintf "%s@." (orange "MAYBE");
-      Format.eprintf "SizeChangeTool was unable to prove %s terminating@." file;
+      Format.printf "%s@." (orange "MAYBE");
+      Debug.debug Debug.D_warn
+        "SizeChangeTool was unable to prove %s terminating@." file;
       let lc_result : Sign.symbol -> unit =
         fun sy ->
           if sy.result = []
           then ()
           else
-            List.iter
-              (fun lc ->
-                 Format.eprintf
-                   "\027[31m * %a is %a relatively to the rules\027[m@."
-                   pp_name sy.name
-                   Sign.pp_local_result lc;
-                   (match lc with
-                    | SelfLooping l   ->
-                      Format.eprintf "  - %a@."
-                        (pp_list "\n  - " Format.pp_print_string) l
-                    | NotPFP s
-                      | NotPositive s
-                      | RhsUntypable s
-                      | LhsOverApplied s ->
-                       Format.eprintf "  - %a@."
-                         Format.pp_print_string s
-                   )
+            Debug.debug_eval D_termin
+              (fun () ->
+                List.iter
+                  (fun lc ->
+                    Format.eprintf
+                      "\027[31m * %a is %a relatively to the rules\027[m@."
+                      pp_name sy.name
+                      Sign.pp_local_result lc;
+                    (match lc with
+                     | SelfLooping l   ->
+                        Format.eprintf "  - %a@."
+                          (pp_list "\n  - " Format.pp_print_string) l
+                     | NotPFP s
+                       | NotPositive s
+                       | RhsUntypable s
+                       | LhsOverApplied s ->
+                        Format.eprintf "  - %a@."
+                          Format.pp_print_string s
+                    )
+                  )
+                  sy.result
               )
-              sy.result in
+      in
       Sign.IMap.iter (fun _ x -> lc_result x) (gr.signature.symbols)
     end
 
@@ -146,20 +154,24 @@ let set_debug : string -> unit =
        try Env.set_debug_mode (String.make 1 c)
        with
        | Env.DebugFlagNotRecognized 'x' ->
-         Debug.enable_flag Sizematrix.D_matrix
+          Debug.enable_flag Sizematrix.D_matrix
        | Env.DebugFlagNotRecognized 's' ->
-         Debug.enable_flag Sizechange.D_sctsummary
+          Debug.enable_flag Sizechange.D_sct
        | Env.DebugFlagNotRecognized 'g' ->
-         Debug.enable_flag Callgraph.D_graph
+          Debug.enable_flag Callgraph.D_graph
        | Env.DebugFlagNotRecognized 'a' ->
-         Debug.enable_flag Callgraph.D_call
+          Debug.enable_flag Callgraph.D_call
+       | Env.DebugFlagNotRecognized 'i' ->
+          Debug.disable_flag D_termin
+       | Env.DebugFlagNotRecognized 'p' ->
+          Debug.enable_flag Positivity_checker.D_pos
     ) st
 
 let _ =
   let options = Arg.align
      [( "-d"
       , Arg.String set_debug
-      , "flags enables debugging for all given flags [xsgap] and [qnocutrm] inherited from Dedukti" ) ;
+      , "flags enables debugging for all given flags [ixsga] and [qnocutrm] inherited from Dedukti" ) ;
       ("--create-dk"
       , Arg.Set Tpdb_to_dk.export_dk_file
       , "create the dk file from an xml" ) ;

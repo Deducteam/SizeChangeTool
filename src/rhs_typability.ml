@@ -60,7 +60,7 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
         then
         try
           Signature.add_rules
-            res [rule_info_of_pre_rule r]
+            res [rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r]
         with
         | Signature.SignatureError e -> Errors.fail_env_error dloc (Env.EnvErrorSignature e)
       )
