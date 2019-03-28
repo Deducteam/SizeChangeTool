@@ -15,5 +15,5 @@ You will need:
 
 ## Using
 
-To know if a `.xml` file named `foo.xml` is proved terminating, simply run `./sizechange.native foo.xml`.
-To know if a Dedukti file named `foo.dk` is proved terminating, simply run `./sizechange.native foo.dk`.
+To know if a `.xml` file named `foo.xml` is proved terminating, simply run `./sct.native foo.xml`.
+To know if a Dedukti file named `foo.dk` is proved terminating, simply run `./sct.native foo.dk`.
