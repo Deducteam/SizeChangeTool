@@ -11,7 +11,7 @@ You will need:
  - `OCaml >= 4.02`,
  - `OCamlBuild`,
  - `xml-light`,
- - `Dedukti`
+ - The branch `master` of `Dedukti` (https://github.com/Deducteam/Dedukti).
 
 ## Using
 
