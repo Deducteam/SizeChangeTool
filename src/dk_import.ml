@@ -5,7 +5,7 @@ open Callgraph
 open Call_extractor
 
 let str_of_name = string_of pp_name
-                
+
 let pre_rule_of_rinfos : Rule.rule_infos -> Rules.pre_rule =
   fun r ->
   let name =
@@ -47,17 +47,17 @@ let pre_rule_of_rinfos : Rule.rule_infos -> Rules.pre_rule =
 
 let add_symb_name : call_graph -> Signature.symbol_infos -> call_graph =
   fun gr sy ->
-  add_symb gr (new_symb sy.ident sy.ty)
+  add_symb gr (new_symb (fst sy) (snd sy).ty)
 
 let add_symb_rules : call_graph -> Signature.symbol_infos -> call_graph =
   fun gr sy ->
   let res = ref gr in
-  List.iter (fun r -> res := add_rule !res (pre_rule_of_rinfos r)) sy.rules;
+  List.iter (fun r -> res := add_rule !res (pre_rule_of_rinfos r)) (snd sy).rules;
   !res
 
 let dk_sig_to_callgraph : Signature.t -> call_graph =
   fun s ->
-  let l = Signature.access_signature s in
+  let l = Signature.symbols_of s in
   let rec enrich_symb gr =
     function
     | []    -> gr
