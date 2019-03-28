@@ -1,0 +1,4 @@
+#!/bin/sh
+
+d="${0%/*}"
+$d/../sct.native -nc -q $1
