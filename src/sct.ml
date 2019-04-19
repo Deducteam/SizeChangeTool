@@ -51,7 +51,7 @@ let str_to_ext : string -> extension =
     | "Dk"
     | ".DK"
     | "DK"  -> Dk
-  | _      -> failwith "Not handled file extension"
+  | _       -> failwith "Not handled file extension"
 
 let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
   fun file ext is_stdin ->
@@ -172,9 +172,6 @@ let _ =
      [( "-d"
       , Arg.String set_debug
       , "flags enables debugging for all given flags [ixsga] and [qnocutrm] inherited from Dedukti" ) ;
-      ("--create-dk"
-      , Arg.Set Tpdb_to_dk.export_dk_file
-      , "create the dk file from an xml" ) ;
       ( "--dk-v"
       , Arg.Unit (fun () -> set_debug "montru")
       , " Verbose mode for Dedukti errors (equivalent to -d 'montru')" ) ;
@@ -187,15 +184,18 @@ let _ =
       ( "-q"
       , Arg.Unit (fun () -> Env.set_debug_mode "q")
       , " Quiet mode (equivalent to -d 'q'" ) ;
-      ( "-nc"
+      ("--create-dk"
+      , Arg.Set Tpdb_to_dk.export_dk_file
+      , " Create the dk file from an xml" ) ;
+      ( "--no-color"
       , Arg.Clear Errors.color
       , " Disable colors in the output" ) ;
       ( "--stdin"
       , Arg.String (fun s -> run_on_stdin (str_to_ext s))
-      , " ext Parses standard input considering it is a .ext file") ;
+      , "ext Parses standard input considering it is a .ext file") ;
       ( "--timeout"
       , Arg.Set_int timeout
-      , "i Set the timeout to i seconds (no timeout by default)")
+      , "i Set the timeout to i seconds (no timeout if i=0, i=0 by default)")
      ]
   in
   let usage = "Usage: " ^ Sys.argv.(0) ^ " [OPTION]... [FILE]...\n" in
