@@ -66,19 +66,107 @@ let rec get_types = function
     List.fold_left SString.union SString.empty  (List.map get_types ll)
   | Xml.PCData(s) -> SString.empty
 
+let rec eta_expand k t=
+  if k<=0
+  then t
+  else
+    let v="new_var_"^(string_of_int k) in
+    eta_expand (k-1) ("("^v^" => "^t^" "^v^")")
+
+let var_arity = ref []
+
+type location = Type | Rhs of int | Lhs of int
+
+let add_one : location -> location =
+  function
+  | Type  -> Type
+  | Rhs i -> Rhs (i+1)
+  | Lhs i -> Lhs (i+1)
+
+let nul_loc : location -> location =
+  function
+  | Type  -> Type
+  | Rhs i -> Rhs 0
+  | Lhs i -> Lhs 0
+
 let rec get_local_type = function
   | Xml.Element(s,[],a::[]) when s="type" -> get_local_type a
   | Xml.Element(s,l,ll) when s="type" ->
     failwith "So many argument in type !"
   | Xml.Element(s,[],a::b::[]) when s="arrow" ->
     "("^(get_local_type a)^"->"^(get_local_type b)^")"
+  | Xml.Element(s,[],Xml.Element(s2,[],(Xml.PCData var)::[])::a::b::[])
+       when (s="arrow" && s2="var") ->
+    "(("^(normalise var)^":"^(get_local_type a)^")->"^(get_local_type b)^")"
   | Xml.Element(s,l,ll) when s="arrow" ->
-    failwith "So many argument in type !"
+    failwith "So many argument in arrow !"
   | Xml.Element(s,[],(Xml.PCData x)::[]) when s="basic" ->
     (normalise x)^"_Type"
   | Xml.Element(s,l,ll) when s="basic" ->
-    failwith "So many argument in basic !"
+     failwith "So many argument in basic !"
+  | Xml.Element(s,[],a::b::[]) when s="application" ->
+      let t1=get_local_type a in
+      let t2=parenthesis (get_term Type b) in
+      t1^" "^t2
+  | Xml.Element(s,l,ll) when s="application" ->
+     failwith "So many argument in application !"
   | _ -> failwith "Error in get_local_type !"
+
+and get_term (loc:location) =
+  function
+    | Xml.Element(s,l,ll) when s="funapp" ->
+      begin
+        let res=ref "" in
+        List.iter
+          (fun x ->
+             let sep = (if !res="" then "" else " ") in
+             res:=!res^sep^(parenthesis (get_term (nul_loc loc) x))
+          ) ll;
+        !res
+      end
+    | Xml.Element(s,[],(Xml.PCData x)::tl) when s="name" -> normalise x
+    | Xml.Element(s,l,ll) when s="name" ->
+      failwith "So many argument in name !"
+    | Xml.Element(s,[],a::[]) when s="arg" -> get_term (nul_loc loc) a
+    | Xml.Element(s,l,ll) when s="arg" ->
+      failwith "So many argument in arg !"
+    | Xml.Element(s,[],a::b::[]) when s="application" ->
+      let t1=get_term (add_one loc) a in
+      let t2=parenthesis (get_term (nul_loc loc) b) in
+      t1^" "^t2
+    | Xml.Element(s,l,ll) when s="application" ->
+      failwith "So many argument in application !"
+    | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" ->
+       begin
+         match loc with
+         | Rhs i -> eta_expand ((List.assoc x !var_arity)-i) (normalise x)
+         | Lhs i -> var_arity:=(x,i)::!var_arity; normalise x
+         | Type -> normalise x
+      end
+    | Xml.Element(s,l,ll) when s="var" ->
+      failwith "So many argument in var !"
+    | Xml.Element(s1,[],(Xml.Element(s2,[],(Xml.PCData x)::[]))::b::c::[])
+         when s1="lambda" && s2="var" ->
+       begin
+       "(" ^ (normalise x) ^
+         (
+           match loc with
+           | Type  -> " : " ^ (get_local_type b)
+           | Rhs _ -> " : " ^ (get_local_type b)
+           | Lhs _ -> ""
+         ) ^ " => " ^ (get_term (nul_loc loc) c) ^ ")"
+       end
+    | Xml.Element(s,l,ll) when s="lambda" ->
+      failwith "So many argument in lambda !"
+    | x -> failwith
+             ("This file is totally unexpected !!\n"^(Xml.to_string x)^"\n")
+
+let get_rule_term =
+  function
+  | Xml.Element(s,l,a::[]) when s="rhs" -> get_term (Rhs 0) a
+  | Xml.Element(s,l,a::[]) when s="lhs" -> var_arity:=[]; get_term (Lhs 0) a
+  | x -> failwith
+           ("This file is totally unexpected !!\n"^(Xml.to_string x)^"\n")
 
 let rec get_funcs =
   let get_name = function
@@ -110,73 +198,10 @@ let rec get_funcs =
     List.flatten (List.map get_funcs ll)
   | Xml.PCData(s) -> []
 
-let var_arity = ref []
-
-let rec eta_expand k t=
-  if k<=0
-  then t
-  else
-    let v="new_var_"^(string_of_int k) in
-    eta_expand (k-1) ("("^v^" => "^t^" "^v^")")
-
-let get_term =
-  let rec get_term_aux under_app rhs = function
-    | Xml.Element(s,l,ll) when s="funapp" ->
-      begin
-        let res=ref "" in
-        List.iter
-          (fun x ->
-             let sep = (if !res="" then "" else " ") in
-             res:=!res^sep^(parenthesis (get_term_aux 0 rhs x))
-          ) ll;
-        !res
-      end
-    | Xml.Element(s,[],(Xml.PCData x)::tl) when s="name" -> normalise x
-    | Xml.Element(s,l,ll) when s="name" ->
-      failwith "So many argument in name !"
-    | Xml.Element(s,[],a::[]) when s="arg" -> get_term_aux 0 rhs a
-    | Xml.Element(s,l,ll) when s="arg" ->
-      failwith "So many argument in arg !"
-    | Xml.Element(s,[],a::b::[]) when s="application" ->
-      let t1=get_term_aux (under_app +1) rhs a in
-      let t2=parenthesis (get_term_aux 0 rhs b) in
-      t1^" "^t2
-    | Xml.Element(s,l,ll) when s="application" ->
-      failwith "So many argument in application !"
-    | Xml.Element(s,[],(Xml.PCData x)::[]) when s="var" ->
-      begin
-        (if rhs
-         then
-           fun t->
-             try
-               eta_expand ((List.assoc t !var_arity)-under_app) (normalise t)
-             with Not_found -> normalise t
-         else
-           fun t -> (var_arity:=(t,under_app)::!var_arity; (normalise t))
-        ) x
-      end
-    | Xml.Element(s,l,ll) when s="var" ->
-      failwith "So many argument in var !"
-    | Xml.Element(s1,[],(Xml.Element(s2,[],(Xml.PCData x)::[]))::b::c::[])
-         when s1="lambda" && s2="var" ->
-      "(" ^ (normalise x) ^
-      (if rhs then " : " ^ (get_local_type b) ^ " " else "") ^
-      " => " ^ (get_term_aux 0 rhs c) ^ ")"
-    | Xml.Element(s,l,ll) when s="lambda" ->
-      failwith "So many argument in lambda !"
-    | x -> failwith
-             ("This file is totally unexpected !!@."^(Xml.to_string x)^"@.")
-  in
-  function
-  | Xml.Element(s,l,a::[]) when s="rhs" -> get_term_aux 0 true a
-  | Xml.Element(s,l,a::[]) when s="lhs" -> var_arity:=[]; get_term_aux 0 false a
-  | x -> failwith
-           ("This file is totally unexpected !!@."^(Xml.to_string x)^"@.")
-
 let rec get_rules = function
   | Xml.Element(s,[],a::b::[]) when s="rule" ->
-    let t1= get_term a in
-    let t2= get_term b in
+    let t1= get_rule_term a in
+    let t2= get_rule_term b in
     [(get_vars a, t1, t2)]
   | Xml.Element(s,l,ll) when s="rule" ->
     failwith "So many arguments in rule !"
