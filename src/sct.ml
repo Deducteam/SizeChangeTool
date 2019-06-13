@@ -205,13 +205,19 @@ let _ =
     Arg.parse options (fun f -> files := f :: !files) usage;
     List.rev !files
   in
-  List.iter
-    (run_with_timeout
-       !timeout
-       (Format.eprintf
-          "%s@.SizeChangeTool has timed out on %s@."
-          (orange "MAYBE")
-       )
-       run_on_file
-    )
-    files
+  try
+    List.iter
+      (run_with_timeout
+         !timeout
+         (Format.eprintf
+            "%s@.SizeChangeTool has timed out on %s@."
+            (orange "MAYBE")
+         )
+         run_on_file
+      )
+      files
+  with
+  | Env.EnvError (l,e) -> Errors.fail_env_error l e
+  | Sys_error err      -> Errors.fail_sys_error err
+  | Signature.SignatureError(a) ->
+     Errors.fail_env_error dloc (Env.EnvErrorSignature a)

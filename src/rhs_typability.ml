@@ -75,7 +75,7 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
     let expected_typ = Subst.Subst.apply sub 0 (remove_pis (Array.to_list r.args) symb.typ) in
     try
       let ctx = List.map (fun (a,b) -> (dloc,a,b)) (Array.to_list tyr.ctx) in
-      Typing.check si_loc ctx r.rhs expected_typ;
+      Typing.Default.check si_loc ctx r.rhs expected_typ;
       true
     with
     | _ -> false

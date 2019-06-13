@@ -90,5 +90,6 @@ let type_rule : Rules.pre_rule -> Callgraph.call_graph ->
   fun r gr ->
   let s = export_to_dk gr in
   let ri = rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r in
-  let tyr = Typing.typed_rule_of_rule_infos s ri in
+  let untyp_r = Rule.untyped_rule_of_rule_infos ri in
+  let tyr = Typing.Default.check_rule s untyp_r in
   fst tyr, {r with ctx = Array.of_list (List.map (fun (_,a,b) -> a,b) (snd tyr).ctx)}

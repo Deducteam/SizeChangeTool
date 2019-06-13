@@ -45,28 +45,30 @@ let pre_rule_of_rinfos : Rule.rule_infos -> Rules.pre_rule =
   let ctx = Array.init nb (fun i -> List.assoc i lass) in
   {name; args; rhs = r.rhs; head = r.cst; ctx}
 
-let add_symb_name : call_graph -> Signature.symbol_infos -> call_graph =
-  fun gr sy ->
-  add_symb gr (new_symb (fst sy) (snd sy).ty)
+let add_symb_name : call_graph -> name -> Signature.rw_infos -> call_graph =
+  fun gr f sy ->
+  add_symb gr (new_symb f sy.ty)
 
-let add_symb_rules : call_graph -> Signature.symbol_infos -> call_graph =
+let add_symb_rules : call_graph -> Signature.rw_infos -> call_graph =
   fun gr sy ->
   let res = ref gr in
-  List.iter (fun r -> res := add_rule !res (pre_rule_of_rinfos r)) (snd sy).rules;
+  List.iter (fun r -> res := add_rule !res (pre_rule_of_rinfos r)) sy.rules;
   !res
 
 let dk_sig_to_callgraph : Signature.t -> call_graph =
   fun s ->
-  let l = Signature.symbols_of s in
+  let l =
+    Signature.fold_symbols
+      (fun md id rwi ll -> ((mk_name md id),rwi)::ll) s [] in
   let rec enrich_symb gr =
     function
     | []    -> gr
-    | a::tl -> enrich_symb (add_symb_name gr a) tl
+    | (f,a)::tl -> enrich_symb (add_symb_name gr f a) tl
   in
   let rec enrich_rules gr =
     function
     | []    -> gr
-    | a::tl -> enrich_rules (add_symb_rules gr a) tl
+    | (f,a)::tl -> enrich_rules (add_symb_rules gr a) tl
   in
   enrich_rules
     (enrich_symb (new_graph (string_of_mident (Signature.get_name s))) l)
