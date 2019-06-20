@@ -48,21 +48,14 @@ let rule_info_of_pre_rule : mident -> Rules.pre_rule -> Rule.rule_infos =
 
 let to_dk_signature : string -> entry list -> Signature.t =
   fun path entries ->
-  let sg = Signature.make path in
-  let md = Signature.get_name sg in
+  ignore (Env.init path);
+  let sg = Env.get_signature () in
   let mk_entry = function
     | Decl(lc,id,st,ty) ->
-       Signature.add_external_declaration sg lc (Basic.mk_name md id) st ty
-    | Def(lc,id,op,Some ty,te) ->
-       let open Rule in
-       Signature.add_external_declaration sg lc (Basic.mk_name md id) Signature.Definable ty;
-       let cst = Basic.mk_name md id in
-       let rule = { name= Delta(cst) ; ctx = [] ; pat = Pattern(lc, cst, []); rhs = te } in
-       Signature.add_rules sg [Rule.to_rule_infos rule]
-    | Def(lc,id,op, None,te) ->
-       Errors.fail_exit (-1) Basic.dloc "All the types should be given"
-    | Rules(lc,rs) ->
-       Signature.add_rules sg (List.map Rule.to_rule_infos rs)
+       Env.declare lc id st ty
+    | Def(lc,id,op,ty_opt,te) ->
+       Env.define lc id op te ty_opt
+    | Rules(lc,rs) -> ignore (Env.add_rules rs)
     | Require(lc,md) -> Signature.import sg lc md
     | _ -> ()
   in
@@ -71,7 +64,8 @@ let to_dk_signature : string -> entry list -> Signature.t =
 
 let export_to_dk : call_graph -> Signature.t =
   fun gr ->
-  let res = Signature.make (gr.mod_name^".dk") in
+  ignore (Env.init (gr.mod_name^".dk"));
+  let res = Env.get_signature () in
   let si = gr.signature in
   IMap.iter
     (fun _ s ->

@@ -21,11 +21,11 @@ let pp_local_result : local_result printer =
   fun fmt lr ->
     let st =
       match lr with
-      | SelfLooping _    -> "self looping"
-      | NotPFP _         -> "not PFP"
-      | NotPositive _    -> "not positive"
-      | RhsUntypable _   -> "rhs is untypable"
-      | LhsOverApplied _ -> "lhs over applied"
+      | SelfLooping _    -> "is self looping"
+      | NotPFP _         -> "is not PFP"
+      | NotPositive _    -> "is not positive"
+      | RhsUntypable _   -> "has untypable rhs"
+      | LhsOverApplied _ -> "has over applied lhs"
     in
     Format.fprintf fmt "%s" st
 

@@ -100,7 +100,7 @@ let run file gr =
   if perform_checks gr
   then
     (Format.printf "%s@." (green "YES");
-     Debug.debug Debug.D_warn "%s was proved terminating@." file)
+     Debug.debug D_termin "%s was proved terminating using Dependency Pairs and SCT@." file)
   else
     begin
       Format.printf "%s@." (orange "MAYBE");
@@ -116,7 +116,7 @@ let run file gr =
                 List.iter
                   (fun lc ->
                     Format.eprintf
-                      "\027[31m * %a is %a relatively to the rules\027[m@."
+                      "\027[31m * %a %a in the rules\027[m@."
                       pp_name sy.name
                       Sign.pp_local_result lc;
                     (match lc with
