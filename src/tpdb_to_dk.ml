@@ -90,6 +90,9 @@ let nul_loc : location -> location =
   | Lhs i -> Lhs 0
 
 let rec get_local_type = function
+  | Xml.Element(s,[],[]) when s="TYPE" -> "Type"
+  | Xml.Element(s,l,ll) when s="TYPE" ->
+     failwith "Unexpected arguments in <Type />"
   | Xml.Element(s,[],a::[]) when s="type" -> get_local_type a
   | Xml.Element(s,l,ll) when s="type" ->
     failwith "So many argument in type !"
@@ -104,6 +107,18 @@ let rec get_local_type = function
     (normalise x)^"_Type"
   | Xml.Element(s,l,ll) when s="basic" ->
      failwith "So many argument in basic !"
+  | Xml.Element(s,[],ll) when s="funapp" ->
+      begin
+        let res=ref "" in
+        List.iter
+          (fun x ->
+             let sep = (if !res="" then "" else " ") in
+             res:=!res^sep^(parenthesis (get_term Type x))
+          ) ll;
+        !res
+      end
+  | Xml.Element(s,l,_) when s="funapp" ->
+     failwith "So many argument in funapp !"
   | Xml.Element(s,[],a::b::[]) when s="application" ->
       let t1=get_local_type a in
       let t2=parenthesis (get_term Type b) in
