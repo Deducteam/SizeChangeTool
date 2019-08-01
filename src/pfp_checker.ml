@@ -1,6 +1,6 @@
 open Term
 open Sign
-open Dk
+open Dk_export
 
 let is_pfp : Rules.pre_rule -> Callgraph.call_graph -> bool =
   (* [is_plain args i] is true if one of the element of [args] is the variable of index [i] *)

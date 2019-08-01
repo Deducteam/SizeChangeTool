@@ -2,6 +2,8 @@ open Basic
 open Dk_export
 open Sign
 
+exception NotWS
+
 (* [symbol_order si] contains a matrix such that [tab.(i).(j)=true} iff the [i]th symbol is smaller than the [j] *)
 let symbol_order : signature -> Sizematrix.Bool_matrix.t =
   fun si ->
@@ -24,9 +26,9 @@ let symbol_order : signature -> Sizematrix.Bool_matrix.t =
   IMap.iter
     (fun i r ->
       update_symb_order (find_symbol_index si r.Rules.head) r.Rules.rhs;
-      Array.iter
+      (*Array.iter
         (fun t -> update_symb_order (find_symbol_index si r.Rules.head) t)
-        r.args
+        r.args*)
     )
     rules;
   Sizematrix.Bool_matrix.trans_clos res
@@ -45,7 +47,18 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   let symbols = si.symbols in
   let rules = si.rules in
   let sym_ord = symbol_order si in
-  let partial_export_to_dk : Basic.name -> Signature.t =
+  (* Check that [f] is strictly bigger that every [g] occurring in its type *)
+  IMap.iter
+    (fun i f ->
+    term_iter
+      (fun _ _ -> ())
+      (fun g ->
+        if sym_ord.tab.(i).(find_symbol_index si g)
+         then raise NotWS
+      )
+      () f.typ)
+    symbols;
+  let partial_export_to_dk_large : Basic.name -> Signature.t =
     fun f ->
     let ind_f = find_symbol_index si f in
     ignore (Env.init (gr.mod_name^".dk"));
@@ -73,13 +86,13 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   in
   let check_rule : Rules.pre_rule -> bool =
     fun r ->
-    let si_loc = partial_export_to_dk r.head in
+    let sig_loc_large = partial_export_to_dk_large r.head in
     let sub, tyr = type_rule r gr in
     let symb = IMap.find (find_symbol_index si r.Rules.head) symbols in
     let expected_typ = Subst.Subst.apply sub 0 (remove_pis (Array.to_list r.args) symb.typ) in
     try
       let ctx = List.map (fun (a,b) -> (dloc,a,b)) (Array.to_list tyr.ctx) in
-      Typing.Default.check si_loc ctx r.rhs expected_typ;
+      Typing.Default.check sig_loc_large ctx r.rhs expected_typ;
       true
     with
     | Typing.TypingError (ConvertibilityError(t,_,ty_exp,ty_inf)) ->

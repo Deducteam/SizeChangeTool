@@ -22,6 +22,8 @@ let rec dig_in_rhs : term -> (int * Basic.name * term array) list =
   | Pi(_,_,a,b) ->
      (dig_in_rhs a) @ (List.map (fun (i,b,c) -> (i+1,b,c)) (dig_in_rhs b))
 
+
+(* [compare_term i t_l t_r] returns Min1 if t_r is a subterm of t_l considering that t_r is under i lambdas, Zero if both terms are equal and Infi otherwise *)
 let rec compare_term : int -> term -> term -> Cmp.t =
   fun i t_l t_r ->
   let rec comp_list : Cmp.t -> term list -> term list -> Cmp.t =

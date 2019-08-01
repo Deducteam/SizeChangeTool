@@ -194,7 +194,7 @@ let rec comp_list : (int * term) list -> (int * term) list -> bool =
   | [], _  -> true
   | _, []  -> false
   | (i1,a)::l1,(i2,b)::l2 ->
-     match Call_extractor.compare_term (i2-i1) a b with
+     match Call_extractor.compare_term (i1-i2) b a with
      | Infi -> false
      | Zero -> comp_list l1 l2
      | Min1 -> true
