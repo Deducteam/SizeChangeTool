@@ -1,6 +1,9 @@
-open Basic
+open Kernel
+open Kernel.Basic
 open Dk_export
 open Sign
+
+module EH = Api.Errors.Make (Api.Env.Default)
 
 exception NotWS
 
@@ -61,14 +64,14 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   let partial_export_to_dk_large : Basic.name -> Signature.t =
     fun f ->
     let ind_f = find_symbol_index si f in
-    ignore (Env.init (gr.mod_name^".dk"));
-    let res = Env.get_signature () in
+    ignore (Api.Env.Default.init (gr.mod_name^".dk"));
+    let res = Api.Env.Default.get_signature () in
     IMap.iter
       (fun _ s ->
         if sym_ord.tab.(find_symbol_index si s.name).(ind_f)
         then
           Signature.add_declaration
-            res dloc (id s.name) (Callgraph.definable gr s.name) (s.typ))
+            res dloc (id s.name) Public (Callgraph.definable gr s.name) (s.typ))
       symbols;
     IMap.iter
       (fun _ r ->
@@ -78,8 +81,8 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
           Signature.add_rules
             res [rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r]
         with
-        | Signature.SignatureError e ->
-            Errors.fail_env_error dloc (Env.EnvErrorSignature e)
+        | Signature.Signature_error e ->
+            EH.graceful_fail None (Api.Env.(Env_error (None,dloc,EnvErrorSignature e)))
       )
       rules;
     res
@@ -95,7 +98,7 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
       Typing.Default.check sig_loc_large ctx r.rhs expected_typ;
       true
     with
-    | Typing.TypingError (ConvertibilityError(t,_,ty_exp,ty_inf)) ->
+    | Typing.Typing_error (ConvertibilityError(t,_,ty_exp,ty_inf)) ->
        Format.printf "%a has type %a, whether %a was inferred@." Term.pp_term t Term.pp_term ty_inf Term.pp_term ty_exp; false
     | _ -> assert false
   in

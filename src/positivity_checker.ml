@@ -1,10 +1,10 @@
-open Basic
-open Term
+open Kernel
+open Kernel.Basic
+open Kernel.Term
 open Sizematrix
 open Sign
 
-type Debug.flag += D_pos
-let _ = Debug.register_flag D_pos "Positivity"
+let d_pos = Debug.register_flag "Positivity"
 
 type comp_cstr = Rules.rule_name * name * (int * term) * (int * term)
 
@@ -291,7 +291,7 @@ let check_positivity : Callgraph.call_graph -> bool =
     (fun _ r -> acc_name := (accessed r)::!acc_name)
     si.rules;
   let acc_bis = List.flatten !acc_name in
-  Debug.debug D_pos "Accessed variables are:@.  - %a@."
+  Debug.debug d_pos "Accessed variables are:@.  - %a@."
     (pp_list "\n  - " (pp_triple Format.pp_print_string pp_name Format.pp_print_int))
     acc_bis;
   let acc = List.map (get_ith_arg_and_return si) acc_bis in
@@ -301,9 +301,9 @@ let check_positivity : Callgraph.call_graph -> bool =
     {cst_gr with
       typ_cstr_order = Sizematrix.Bool_matrix.trans_clos cst_gr.typ_cstr_order}
   in
-  Debug.debug D_pos "The main order is:@.";
+  Debug.debug d_pos "The main order is:@.";
   Debug.debug_eval
-    D_pos
+    d_pos
     (fun () ->
       let cons = cst_gr2.constructors in
       let tab = cst_gr2.typ_cstr_order.tab in

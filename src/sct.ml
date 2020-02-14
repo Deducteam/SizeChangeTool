@@ -1,8 +1,10 @@
-open Basic
+open Kernel.Basic
+open Parsing
 open Dk_export
 
-type Debug.flag += D_termin
-let _ = Debug.register_flag D_termin "Termin"; Debug.enable_flag D_termin
+module EH = Api.Errors.Make (Api.Env.Default)
+
+let d_termin = Debug.new_flag true "Termin"
 
 exception Timeout
 
@@ -94,7 +96,7 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
 
 
 let colored n s =
-  if !Errors.color
+  if !Api.Errors.color
   then "\027[3" ^ string_of_int n ^ "m" ^ s ^ "\027[m"
   else s
 
@@ -106,18 +108,18 @@ let run file gr =
     if perform_checks gr
     then
       (Format.printf "%s@." (green "YES");
-       Debug.debug D_termin "%s was proved terminating using Dependency Pairs and SCT" file)
+       Debug.debug d_termin "%s was proved terminating using Dependency Pairs and SCT" file)
     else
       begin
         Format.printf "%s@." (orange "MAYBE");
-        Debug.debug Debug.D_warn
+        Debug.debug Debug.d_warn
           "SizeChangeTool was unable to prove %s terminating" file;
         let lc_result : Sign.symbol -> unit =
           fun sy ->
           if sy.result = []
           then ()
           else
-            Debug.debug_eval D_termin
+            Debug.debug_eval d_termin
               (fun () ->
                 List.iter
                   (fun lc ->
@@ -146,9 +148,9 @@ let run file gr =
   | Rhs_typability.NotWS ->
      begin
        Format.printf "%s@." (orange "MAYBE");
-       Debug.debug Debug.D_warn
+       Debug.debug Debug.d_warn
          "SizeChangeTool was unable to prove %s terminating" file;
-       Debug.debug D_termin "\027[31mThe file is not well-structured\027[m"
+       Debug.debug d_termin "\027[31mThe file is not well-structured\027[m"
      end
 
 let run_on_file file =
@@ -165,20 +167,20 @@ let set_debug : string -> unit =
   fun st ->
     String.iter
     (fun c ->
-       try Env.set_debug_mode (String.make 1 c)
+       try Api.Env.set_debug_mode (String.make 1 c)
        with
-       | Env.DebugFlagNotRecognized 'x' ->
-          Debug.enable_flag Sizematrix.D_matrix
-       | Env.DebugFlagNotRecognized 's' ->
-          Debug.enable_flag Sizechange.D_sct
-       | Env.DebugFlagNotRecognized 'g' ->
-          Debug.enable_flag Callgraph.D_graph
-       | Env.DebugFlagNotRecognized 'a' ->
-          Debug.enable_flag Callgraph.D_call
-       | Env.DebugFlagNotRecognized 'i' ->
-          Debug.disable_flag D_termin
-       | Env.DebugFlagNotRecognized 'p' ->
-          Debug.enable_flag Positivity_checker.D_pos
+       | Api.Env.DebugFlagNotRecognized 'x' ->
+          Debug.enable_flag Sizematrix.d_matrix
+       | Api.Env.DebugFlagNotRecognized 's' ->
+          Debug.enable_flag Sizechange.d_sct
+       | Api.Env.DebugFlagNotRecognized 'g' ->
+          Debug.enable_flag Callgraph.d_graph
+       | Api.Env.DebugFlagNotRecognized 'a' ->
+          Debug.enable_flag Callgraph.d_call
+       | Api.Env.DebugFlagNotRecognized 'i' ->
+          Debug.disable_flag d_termin
+       | Api.Env.DebugFlagNotRecognized 'p' ->
+          Debug.enable_flag Positivity_checker.d_pos
     ) st
 
 let _ =
@@ -196,13 +198,13 @@ let _ =
       , Arg.Unit (fun () -> set_debug "montruxsga")
       , " Most verbose mode (equivalent to -d 'montruxsga')" ) ;
       ( "-q"
-      , Arg.Unit (fun () -> Env.set_debug_mode "q")
+      , Arg.Unit (fun () -> Api.Env.set_debug_mode "q")
       , " Quiet mode (equivalent to -d 'q'" ) ;
       ("--create-dk"
       , Arg.Set Tpdb_to_dk.export_dk_file
       , " Create the dk file from an xml" ) ;
       ( "--no-color"
-      , Arg.Clear Errors.color
+      , Arg.Clear Api.Errors.color
       , " Disable colors in the output" ) ;
       ( "--stdin"
       , Arg.String (fun s -> run_on_stdin (str_to_ext s))
@@ -234,7 +236,7 @@ let _ =
       )
       files
   with
-  | Env.EnvError (l,e) -> Errors.fail_env_error l e
-  | Sys_error err      -> Errors.fail_sys_error err
-  | Signature.SignatureError(a) ->
-     Errors.fail_env_error dloc (Env.EnvErrorSignature a)
+  | Api.Env.Env_error (_,_,_)
+  | Sys_error _ as e                    -> EH.graceful_fail None e
+  | Kernel.Signature.Signature_error(e) ->
+     EH.graceful_fail None (Api.Env.Env_error (None, dloc, (Api.Env.EnvErrorSignature e)))

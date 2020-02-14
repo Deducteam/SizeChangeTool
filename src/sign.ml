@@ -1,7 +1,7 @@
-open Basic
+open Kernel
+open Kernel.Basic
 
-type Debug.flag += D_sign
-let _ = Debug.register_flag D_sign "Signature"
+let d_sign = Debug.register_flag "Signature"
 
 (** The local result express the result of the termination checker for this symbol *)
 type local_result =
@@ -117,12 +117,12 @@ let find_rule_index : signature -> Rules.rule_name -> index =
 let add_symb : signature -> symbol -> signature =
   fun s sy ->
   let next = s.next_symb in
-  Debug.debug D_sign "We add the symbol (%i,%a)" next pp_name (sy.name);
+  Debug.debug d_sign "We add the symbol (%i,%a)" next pp_name (sy.name);
   { s with next_symb = next + 1; symbols = IMap.add next sy (s.symbols)}
 
 (** Add a new rule to the call graph *)
 let add_rule : signature -> Rules.pre_rule -> signature =
   fun s r ->
   let next = s.next_rule in
-  Debug.debug D_sign "We add the rule (%i,%s)" next (r.name);
+  Debug.debug d_sign "We add the rule (%i,%s)" next (r.name);
   { s with next_rule = next + 1; rules = IMap.add next r (s.rules)}

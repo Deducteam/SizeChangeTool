@@ -2,4 +2,4 @@ S src/
 
 B _build/src/
 
-PKG dedukti xml-light
+PKG dedukti.kernel dedukti.parsing dedukti.api xml-light

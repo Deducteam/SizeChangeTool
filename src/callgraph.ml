@@ -1,10 +1,10 @@
-open Basic
+open Kernel
+open Kernel.Basic
 open Sizematrix
 open Sign
 
-type Debug.flag += D_graph | D_call
-let _ = Debug.register_flag D_graph "Call graph";
-  Debug.register_flag D_call "Call generation"
+let d_graph = Debug.register_flag "Call graph"
+let d_call  = Debug.register_flag "Call generation"
 
 module EdgeLabel = struct
   type t = (string list * Cmp_matrix.t) list
@@ -126,8 +126,8 @@ let rec trans_clos : call_graph -> call_graph =
 let add_call : call_graph -> call -> call_graph =
   fun gr cc ->
   let si = gr.signature in
-  Debug.debug D_graph "New call: %a" (pp_call si) cc;
-  Debug.debug D_graph "The matrix is %a" Cmp_matrix.pp cc.matrix;
+  Debug.debug d_graph "New call: %a" (pp_call si) cc;
+  Debug.debug d_graph "The matrix is %a" Cmp_matrix.pp cc.matrix;
   (gr.calls).tab.(cc.caller).(cc.callee) <-
     ([cc.rule_name],cc.matrix) :: (gr.calls).tab.(cc.caller).(cc.callee);
   trans_clos gr

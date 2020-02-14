@@ -1,4 +1,4 @@
-open Basic
+open Kernel.Basic
 
 let export_dk_file : bool ref = ref false
 

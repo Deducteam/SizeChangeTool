@@ -1,13 +1,13 @@
-open Basic
+open Kernel
+open Kernel.Basic
 
-type Debug.flag += D_matrix
-let _ = Debug.register_flag D_matrix "Call matrix"
+let d_matrix = Debug.register_flag "Call matrix"
 
 (** Tools used for the matrices labeling edges in the call-graph studied by sizechange.ml *)
 
 module type SemiRing = sig
   type t
-  val pp          : t Basic.printer
+  val pp          : t printer
   val add_neutral : t
   val plus        : t -> t -> t
   val mult        : t -> t -> t
@@ -150,7 +150,7 @@ module Bool_matrix = struct
   include
     Matrix(struct
         type t = bool
-        let pp          : t Basic.printer =
+        let pp          : t printer =
           fun fmt b -> Format.fprintf fmt "%s" (if b then "T" else "F")
         let add_neutral : t = false
         let plus        : t -> t -> t = (||)

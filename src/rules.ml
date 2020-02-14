@@ -1,7 +1,8 @@
-open Basic
+open Kernel
+open Kernel.Basic
 
-type pre_context   = Basic.ident array
-type typed_context = (Basic.ident * Term.term) array
+type pre_context   = ident array
+type typed_context = (ident * Term.term) array
 
 type rule_name = string
 

@@ -5,7 +5,7 @@ VERSION = devel
 Q = @
 
 # The -tag debug together with export OCAMLRUNPARAM=b allow backtraces when the program fail.
-PKG = -package dedukti -package xml-light -package str
+PKG = -package dedukti.kernel -package dedukti.parsing -package dedukti.api -package xml-light -package str
 
 .PHONY: all
 all: sct

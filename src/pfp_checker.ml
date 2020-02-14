@@ -1,4 +1,5 @@
-open Term
+open Kernel
+open Kernel.Term
 open Sign
 open Dk_export
 

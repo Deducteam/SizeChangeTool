@@ -2,13 +2,13 @@
     This module implements a decision procedure based on the work of
 Chin Soon Lee, Neil D. Jones and Amir M. Ben-Amram (POPL 2001).
     Most of this module comes from an implementation of Rodolphe Lepigre
-and Christophe Raffalli. *)
-open Basic
+    and Christophe Raffalli. *)
+open Kernel
+open Kernel.Basic
 open Sizematrix
 open Callgraph
 
-type Debug.flag += D_sct
-let _ = Debug.register_flag D_sct "SCT"
+let d_sct = Debug.register_flag "SCT"
 
 (** the main function, checking if calls are well-founded *)
 let check_sct : call_graph -> bool =

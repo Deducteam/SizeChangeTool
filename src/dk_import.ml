@@ -1,5 +1,6 @@
-open Basic
-open Term
+open Kernel
+open Kernel.Basic
+open Kernel.Term
 open Sign
 open Callgraph
 open Call_extractor
