@@ -146,5 +146,5 @@ let definable : call_graph -> name -> Signature.staticity =
     (fun _ r -> res := !res || (r.Rules.head = s))
     gr.signature.rules;
   if !res
-  then Signature.Definable
+  then Signature.Definable Term.Free
   else Signature.Static

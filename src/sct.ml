@@ -145,12 +145,12 @@ let run file gr =
         Sign.IMap.iter (fun _ x -> lc_result x) (gr.signature.symbols)
       end
   with
-  | Rhs_typability.NotWS ->
+  | Rhs_typability.NotWS f ->
      begin
        Format.printf "%s@." (orange "MAYBE");
        Debug.debug Debug.d_warn
          "SizeChangeTool was unable to prove %s terminating" file;
-       Debug.debug d_termin "\027[31mThe file is not well-structured\027[m"
+       Debug.debug d_termin "\027[31mThe file is not well-structured, since %a is not smaller than its type.\027[m" pp_name f
      end
 
 let run_on_file file =

@@ -80,7 +80,7 @@ let export_to_dk : call_graph -> Signature.t =
   res
 
 let type_rule : Rules.pre_rule -> Callgraph.call_graph ->
-                Subst.Subst.t * Rules.typed_rule =
+                Exsubst.ExSubst.t * Rules.typed_rule =
   fun r gr ->
   let s = export_to_dk gr in
   let ri = rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r in
