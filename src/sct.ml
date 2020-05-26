@@ -2,8 +2,6 @@ open Kernel.Basic
 open Parsing
 open Dk_export
 
-module EH = Api.Errors.Make (Api.Env.Default)
-
 let d_termin = Debug.new_flag true "Termin"
 
 exception Timeout
@@ -64,24 +62,25 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
   fun file ext is_stdin ->
   match ext, is_stdin with
   | Dk,  false ->
-     let input = open_in file in
-     let md = mk_mident file in
+     let input = Parsers.Parser.input_from_file file in
      let s =
-       to_dk_signature file (Parser.Parse_channel.parse md input)
-     in (close_in input; Dk_import.dk_sig_to_callgraph s)
+       to_dk_signature file (Parsers.Parser.parse input)
+     in Dk_import.dk_sig_to_callgraph s
   | Xtc, false ->
-     let md = mk_mident file in
+     let file_without_ext = Filename.chop_extension file in
+     let md = mk_mident file_without_ext in
      let dk_string = Tpdb_to_dk.load_file md file in
      if !(Tpdb_to_dk.export_dk_file)
      then
-       (let output = Format.formatter_of_out_channel (open_out (file^".dk")) in
+       (let output = Format.formatter_of_out_channel (open_out (file_without_ext^".dk")) in
         Format.fprintf output "%s@." dk_string);
      let s =
-       to_dk_signature file (Parser.Parse_string.parse md dk_string)
-     in Dk_import.dk_sig_to_callgraph s
+       to_dk_signature file (Parsers.Parser.parse (Parsers.Parser.input_from_string md dk_string))
+     in
+     Dk_import.dk_sig_to_callgraph s
   | Dk,  true  ->
      let s =
-       to_dk_signature file (Parser.Parse_channel.parse (mk_mident "std_in") stdin)
+       to_dk_signature file (Parsers.Parser.parse (Parsers.Parser.input_from_stdin (mk_mident "std_in")))
      in Dk_import.dk_sig_to_callgraph s
   | Xtc, true ->
      let md = mk_mident file in
@@ -91,7 +90,7 @@ let generate_graph : string -> extension -> bool -> Callgraph.call_graph =
        (let output = Format.formatter_of_out_channel (open_out (file^".dk")) in
         Format.fprintf output "%s@." dk_string);
      let s =
-       to_dk_signature file (Parser.Parse_string.parse (mk_mident file) dk_string)
+       to_dk_signature file (Parsers.Parser.parse (Parsers.Parser.input_from_string md dk_string))
      in Dk_import.dk_sig_to_callgraph s
 
 
@@ -236,7 +235,6 @@ let _ =
       )
       files
   with
-  | Api.Env.Env_error (_,_,_)
-  | Sys_error _ as e                    -> EH.graceful_fail None e
-  | Kernel.Signature.Signature_error(e) ->
-     EH.graceful_fail None (Api.Env.Env_error (None, dloc, (Api.Env.EnvErrorSignature e)))
+  | e                ->
+     let (code, lc, msg) = Api.Errors.string_of_exception ~red:(fun x -> x) dloc e in
+     Api.Errors.fail_exit ~file:"" ~code:(string_of_int code) (Some lc) "%s" msg

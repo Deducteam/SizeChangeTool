@@ -46,17 +46,17 @@ let rule_info_of_pre_rule : mident -> Rules.pre_rule -> Rule.rule_infos =
     in
     to_rule_infos ur)
 
-let to_dk_signature : string -> Parsing.Entry.entry list -> Signature.t =
+let to_dk_signature : string -> Parsers.Entry.entry list -> Signature.t =
   fun path entries ->
-  ignore (Api.Env.Default.init path);
-  let sg = Api.Env.Default.get_signature () in
+  let env = Api.Env.init (Parsers.Parser.input_from_string (mk_mident (Filename.chop_extension path)) "") in
+  let sg = Api.Env.get_signature env in
   let mk_entry = function
-    | Parsing.Entry.Decl(lc,id,scope,stat,ty) ->
-       Api.Env.Default.declare lc id scope stat ty
-    | Parsing.Entry.Def(lc,id,scope,op,ty_opt,te) ->
-       Api.Env.Default.define lc id scope op te ty_opt
-    | Parsing.Entry.Rules(lc,rs) -> ignore (Api.Env.Default.add_rules rs)
-    | Parsing.Entry.Require(lc,md) -> Signature.import sg lc md
+    | Parsers.Entry.Decl(lc,id,scope,stat,ty) ->
+       Api.Env.declare env lc id scope stat ty
+    | Parsers.Entry.Def(lc,id,scope,op,ty_opt,te) ->
+       Api.Env.define env lc id scope op te ty_opt
+    | Parsers.Entry.Rules(lc,rs) -> ignore (Api.Env.add_rules env rs)
+    | Parsers.Entry.Require(lc,md) -> Signature.import sg lc md
     | _ -> ()
   in
   List.iter mk_entry entries;
@@ -64,8 +64,8 @@ let to_dk_signature : string -> Parsing.Entry.entry list -> Signature.t =
 
 let export_to_dk : call_graph -> Signature.t =
   fun gr ->
-  ignore (Api.Env.Default.init (gr.mod_name^".dk"));
-  let res = Api.Env.Default.get_signature () in
+  let env = Api.Env.init (Parsers.Parser.input_from_string (mk_mident (gr.mod_name)) "") in
+  let res = Api.Env.get_signature env in
   let si = gr.signature in
   IMap.iter
     (fun _ s ->
@@ -75,7 +75,7 @@ let export_to_dk : call_graph -> Signature.t =
   IMap.iter
     (fun _ r ->
       Signature.add_rules
-        res [rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r])
+        res [rule_info_of_pre_rule (mk_mident (gr.mod_name)) r])
     si.rules;
   res
 

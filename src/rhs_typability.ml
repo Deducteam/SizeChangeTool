@@ -3,8 +3,6 @@ open Kernel.Basic
 open Dk_export
 open Sign
 
-module EH = Api.Errors.Make (Api.Env.Default)
-
 exception NotWS of name
 
 (* [symbol_order si] contains a matrix such that [tab.(i).(j)=true} iff the [i]th symbol is smaller than the [j] *)
@@ -50,6 +48,7 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   let symbols = si.symbols in
   let rules = si.rules in
   let sym_ord = symbol_order si in
+  let md = mk_mident gr.mod_name in
   (* Check that [f] is strictly bigger that every [g] occurring in its type *)
   IMap.iter
     (fun i f ->
@@ -64,28 +63,27 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
   let partial_export_to_dk_large : Basic.name -> Signature.t =
     fun f ->
     let ind_f = find_symbol_index si f in
-    ignore (Api.Env.Default.init (gr.mod_name^".dk"));
-    let res = Api.Env.Default.get_signature () in
+    let env = Api.Env.init (Parsers.Parser.input_from_string md "") in
+    let sg = Api.Env.get_signature env in
     IMap.iter
       (fun _ s ->
         if sym_ord.tab.(find_symbol_index si s.name).(ind_f)
         then
-          Signature.add_declaration
-            res dloc (id s.name) Public (Callgraph.definable gr s.name) (s.typ))
+          Signature.add_declaration sg dloc (id s.name) Public (Callgraph.definable gr s.name) (s.typ))
       symbols;
     IMap.iter
       (fun _ r ->
         if sym_ord.tab.(find_symbol_index si r.Rules.head).(ind_f)
         then
         try
-          Signature.add_rules
-            res [rule_info_of_pre_rule (mk_mident (gr.mod_name^".dk")) r]
+          Signature.add_rules sg [rule_info_of_pre_rule md r]
         with
-        | Signature.Signature_error e ->
-            EH.graceful_fail None (Api.Env.(Env_error (None,dloc,EnvErrorSignature e)))
+        | e ->
+           let (code, lc, msg) =  Api.Errors.string_of_exception ~red:(fun x -> x) dloc e in
+           Api.Errors.fail_exit ~file:gr.mod_name ~code:(string_of_int code) (Some lc) "%s" msg
       )
       rules;
-    res
+    sg
   in
   let check_rule : Rules.pre_rule -> bool =
     fun r ->
@@ -99,7 +97,8 @@ let check_rhs_underf_typab : Callgraph.call_graph -> bool =
       true
     with
     | Typing.Typing_error (ConvertibilityError(t,_,ty_exp,ty_inf)) ->
-       Format.printf "%a has type %a, whether %a was inferred@." Term.pp_term t Term.pp_term ty_inf Term.pp_term ty_exp; false
+       Format.printf "%a has type %a, whether %a was inferred@." Term.pp_term t Term.pp_term ty_inf Term.pp_term ty_exp;
+       false
     | _ -> assert false
   in
   let res = ref true in
